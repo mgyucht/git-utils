@@ -1,0 +1,71 @@
+#!/bin/bash
+
+# Save current path
+OLD_PATH=$(pwd)
+
+# Quit if we're not in a repo
+git rev-parse --show-cdup &> /dev/null || {
+  echo 'Must be in a git repository to run this command'
+  exit 1
+}
+
+# First, commit normally
+git commit $@ || exit 1
+
+# Then, get the commit message
+COMMIT_MSG=$(git log -1 --pretty=%B)
+
+# Jump to the root of the current git repository and get its path
+BOTTOM_GIT_PATH=$(git rev-parse --show-cdup)
+# BOTTOM_GIT_PATH is empty if we're in the root directory.
+if [[ ! -z $BOTTOM_GIT_PATH ]]
+then
+	cd $BOTTOM_GIT_PATH
+fi
+GIT_ROOT=$(pwd)
+
+REPO_NAME=$(basename $GIT_ROOT)
+FOLDER_NAME=$(dirname $GIT_ROOT)
+
+# Try to jump up one directory and stash+add subrepo
+cd $FOLDER_NAME
+pwd
+
+# Test whether we're in a git repository now
+git rev-parse --show-cdup
+while [ $? -eq 0 ]; do
+	CHANGED_FILES=$(git diff HEAD --name-only)
+	if [[ $REPO_NAME -ne $CHANGED_FILES ]]
+	then
+		echo "Stashing files: $CHANGED_FILES"
+		git stash
+	fi
+
+	git add $REPO_NAME
+
+	# Commit change
+	NEW_COMMIT_MSG="$COMMIT_MSG"$'\n\n'"Bumping $REPO_NAME"
+	git commit -m"$NEW_COMMIT_MSG"
+
+	# Restore old changes
+	if [[ $REPO_NAME -ne $CHANGED_FILES ]]
+	then
+		git stash pop
+	fi
+
+	# Jump to the root of the current git repository and get its path
+	BOTTOM_GIT_PATH=$(git rev-parse --show-cdup)
+	# BOTTOM_GIT_PATH is empty if we're in the root directory.
+	if [[ ! -z $BOTTOM_GIT_PATH ]]
+	then
+		cd $BOTTOM_GIT_PATH
+	fi
+	GIT_ROOT=$(pwd)
+
+	REPO_NAME=$(basename $GIT_ROOT)
+	FOLDER_NAME=$(dirname $GIT_ROOT)
+	cd $FOLDER_NAME
+	git rev-parse --show-cdup &> /dev/null
+done
+
+cd $OLD_PATH
