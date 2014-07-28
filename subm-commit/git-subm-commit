@@ -35,7 +35,7 @@ pwd
 git rev-parse --show-cdup
 while [ $? -eq 0 ]; do
 	CHANGED_FILES=$(git diff HEAD --name-only)
-	if [[ $REPO_NAME -ne $CHANGED_FILES ]]
+	if [[ $REPO_NAME != $CHANGED_FILES ]]
 	then
 		echo "Stashing files: $CHANGED_FILES"
 		git stash
@@ -48,7 +48,7 @@ while [ $? -eq 0 ]; do
 	git commit -m"$NEW_COMMIT_MSG"
 
 	# Restore old changes
-	if [[ $REPO_NAME -ne $CHANGED_FILES ]]
+	if [[ $REPO_NAME != $CHANGED_FILES ]]
 	then
 		git stash pop
 	fi
